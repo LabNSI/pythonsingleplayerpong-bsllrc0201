@@ -1,0 +1,154 @@
+import pygame
+import os
+
+pygame.init()
+
+# Taille de la fenêtre du jeu
+WIDTH, HEIGHT = 800, 600
+
+# Initialiser la surface de jeu avec une taille fixe
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption('My Game')
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
+
+myfont = pygame.font.SysFont('monospace', 50)
+small_font = pygame.font.SysFont('monospace', 25)
+
+def load_scores():
+    scores = []
+    if os.path.exists("scores.txt"):
+        with open("scores.txt", "r") as file:
+            for line in file:
+                scores.append(int(line.strip()))
+    return scores
+
+def save_score(score):
+    scores = load_scores()
+    scores.append(score)
+    scores.sort(reverse=True)
+    with open("scores.txt", "w") as file:
+        for s in scores:
+            file.write(str(s) + "\n")
+
+def display_scores():
+    scores = load_scores()
+    screen.fill(BLACK)
+    title = myfont.render("Tableau des scores", True, WHITE)
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 50))
+
+    for i, score in enumerate(scores[:10]):  # Affiche les 10 meilleurs scores
+        score_text = small_font.render(f"{i + 1}. {score}", True, WHITE)
+        screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 100 + i * 30))
+
+    replay_message = small_font.render("Appuyez sur 'r' pour rejouer ou 'q' pour quitter", True, GREEN)
+    screen.blit(replay_message, (WIDTH // 2 - replay_message.get_width() // 2, HEIGHT - 50))
+    pygame.display.update()
+
+def game():
+    screen.fill(BLACK)
+    title = myfont.render("À toi de jouer:", False, GREEN)
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - title.get_height() * 2))
+    pygame.display.update()
+    pygame.time.delay(1000)
+
+    # countdown before start game
+    for i in range(3, 0, -1):
+        screen.fill(BLACK)
+        countdown = myfont.render(str(i), True, WHITE)
+        screen.blit(countdown, (WIDTH // 2 - countdown.get_width() // 2, HEIGHT // 2 - countdown.get_height() // 2))
+        pygame.display.update()
+        pygame.time.delay(1000)
+
+    radius = 10
+    x = WIDTH // 2
+    y = radius
+    score = 0
+
+    paddle = {"width": 150,
+              "height": 10,
+              "color": RED,
+              "x": 0,
+              "y": HEIGHT}
+    paddle["x"] = WIDTH // 2 - paddle["width"] // 2
+    paddle["y"] = HEIGHT - paddle["height"]
+
+    speed = 5
+    x_sens = y_sens = -1
+    pause = False
+
+    end = False
+    while not end:
+        screen.fill(BLACK)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+        key = pygame.key.get_pressed()
+
+        if key[pygame.K_SPACE]:
+            pause = not pause
+
+        if not pause:
+            if key[pygame.K_LEFT] and paddle["x"] > 0:
+                paddle["x"] -= speed
+            if key[pygame.K_RIGHT] and paddle["x"] < WIDTH - paddle["width"]:
+                paddle["x"] += speed
+
+            # Collision avec les murs
+            if x - radius <= 0 or x + radius >= WIDTH:
+                x_sens *= -1
+
+            if y - radius <= 0:
+                y_sens *= -1
+
+            # Collision avec la raquette
+            if y + radius >= paddle["y"] and paddle["x"] <= x <= paddle["x"] + paddle["width"]:
+                y_sens *= -1
+                score += 1
+                speed += 0.5  # Augmenter la vitesse à chaque rebond sur la raquette
+
+            if y + radius > HEIGHT:
+                end = True
+
+            x += x_sens * speed
+            y += y_sens * speed
+
+        score_font = pygame.font.SysFont('monospace', 30)
+        score_display = score_font.render("Score: " + str(score), True, WHITE)
+        screen.blit(score_display, (10, 10))
+
+        pygame.draw.circle(screen, WHITE, (x, y), radius)
+        pygame.draw.rect(screen, paddle["color"], (paddle["x"], paddle["y"], paddle["width"], paddle["height"]))
+
+        pygame.display.update()
+        pygame.time.delay(10)
+
+    save_score(score)
+
+    screen.fill(BLACK)
+    end_message = myfont.render("Votre score est: " + str(score), True, WHITE)
+    screen.blit(end_message, (WIDTH // 2 - end_message.get_width() // 2, HEIGHT // 2 - end_message.get_height() // 2))
+    pygame.display.update()
+
+    display_scores()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    game()
+                elif event.key == pygame.K_q:
+                    pygame.quit()
+                    quit()
+
+game()
